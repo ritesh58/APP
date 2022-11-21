@@ -1,0 +1,38 @@
+node {
+  stage('Init') {
+    checkout scm
+  }
+
+   stage('Docker build') {
+
+      withCredentials([[$class: 'UsernamePasswordMultiBinding', credentialsId: 'ACR-Credentials', usernameVariable: 'ARTIFACTORY_USERNAME', passwordVariable: 'ARTIFACTORY_PASSWORD']]) {
+            withEnv(['PATH+EXTRA=/usr/local/bin']){
+
+              sh """
+                    docker login --username "${ARTIFACTORY_USERNAME}" --password "${ARTIFACTORY_PASSWORD}" "riteshacr.azurecr.io"
+                    docker build -t "riteshacr.azurecr.io/task3:latest" .
+                    docker push "riteshacr.azurecr.io/task3:latest"
+                """
+            }
+       }
+  
+
+  }
+
+  stage('Deploy') {
+
+      withCredentials([[$class: 'UsernamePasswordMultiBinding', credentialsId: 'ACR-Credentials', usernameVariable: 'ARTIFACTORY_USERNAME', passwordVariable: 'ARTIFACTORY_PASSWORD']]) {
+            withEnv(['PATH+EXTRA=/usr/local/bin']){
+
+              sh """
+                    ssh -o StrictHostKeyChecking=no riteshgupta@20.232.114.136 <<EOF
+                    sudo docker login --username "${ARTIFACTORY_USERNAME}" --password "${ARTIFACTORY_PASSWORD}" "riteshacr.azurecr.io"
+                    sudo docker pull "riteshacr.azurecr.io/task3:latest"
+                    sudo docker run -d -p 8080:80 "riteshacr.azurecr.io/task3:latest"
+                """
+            }
+       }
+   
+  }
+
+}
